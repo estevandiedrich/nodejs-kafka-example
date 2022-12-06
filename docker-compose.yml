@@ -1,0 +1,50 @@
+---
+version: '3.5'
+
+networks: 
+  rmoff_kafka:
+    name: rmoff_kafka
+
+services:
+  zookeeper:
+    image: ubuntu/zookeeper:edge
+    ports:
+        - '2181:2181'
+    container_name: zookeeper
+    networks: 
+      - rmoff_kafka
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  broker:
+    image: ubuntu/kafka:3.1-22.04_beta
+    ports:
+        - '9092:9092'
+    container_name: broker
+    networks: 
+      - rmoff_kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  client:
+    image: estevandiedrich/nodejs_kafka_test_client:2
+    restart: always
+    container_name: nodejs_kafka_test_client
+    depends_on: 
+      - broker
+    networks: 
+      - rmoff_kafka
+    entrypoint: 
+      - bash 
+      - -c 
+      - |
+        echo 'Giving Kafka a bit of time to start up…'
+        sleep 30
+        # Run the client code
+        node /index.js
+        
